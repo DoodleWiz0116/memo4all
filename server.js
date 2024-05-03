@@ -1,59 +1,46 @@
-// app.js
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
-const cron = require('node-cron');
-
 const app = express();
-app.use(express.json());
-app.use(cors());
+const port = process.env.PORT || 3000;
 
-// MongoDB connection
-mongoose.connect('mongodb://localhost/user_input', {
+// Connect to MongoDB database
+mongoose.connect('mongodb://localhost/collaborative-writing', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
 
-// User Input Schema
-const userInputSchema = new mongoose.Schema({
-  input: String,
+// Create a schema for the text entry
+const EntrySchema = new mongoose.Schema({
+  text: String,
   timestamp: Date,
 });
 
-const UserInput = mongoose.model('UserInput', userInputSchema);
+const Entry = mongoose.model('Entry', EntrySchema);
 
-// API endpoint for user input submission
-app.post('/api/input', async (req, res) => {
-  try {
-    const { input } = req.body;
-    const userInput = new UserInput({
-      input,
-      timestamp: new Date(),
-    });
-    await userInput.save();
-    res.status(200).json({ message: 'User input saved successfully' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-});
+// Serve static files from the "public" directory
+app.use(express.static('public'));
 
-// Scheduled task to save user input every 5 minutes
-cron.schedule('*/5 * * * *', async () => {
-  try {
-    const userInputs = await UserInput.find({
-      timestamp: {
-        $gte: new Date(Date.now() - 5 * 60 * 1000), // Last 5 minutes
-      },
-    });
-    console.log('User inputs saved:', userInputs);
-  } catch (error) {
-    console.error(error);
-  }
+// API route to handle text entry
+app.post('/api/entry', (req, res) => {
+  const { text } = req.body;
+
+  // Create a new entry in the database
+  const newEntry = new Entry({
+    text,
+    timestamp: new Date(),
+  });
+
+  newEntry.save((err) => {
+    if (err) {
+      console.error('Error saving entry:', err);
+      res.status(500).json({ error: 'Internal server error' });
+    } else {
+      res.status(200).json({ message: 'Entry saved successfully' });
+    }
+  });
 });
 
 // Start the server
-const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+  console.log(`Server running on port ${port}`);
 });

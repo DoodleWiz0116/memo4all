@@ -1,22 +1,27 @@
-// app.js
-const input = document.getElementById('input');
+const textContainer = document.getElementById('text-container');
+let lastEntryTime = Date.now();
 
-input.addEventListener('input', async () => {
-  try {
-    const response = await fetch('http://localhost:3000/api/input', {
+textContainer.addEventListener('input', () => {
+  const currentTime = Date.now();
+  const elapsedTime = currentTime - lastEntryTime;
+
+  if (elapsedTime >= 5 * 60 * 1000) {
+    const text = textContainer.innerText;
+
+    fetch('/api/entry', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ input: input.value }),
-    });
-
-    if (response.ok) {
-      console.log('User input submitted successfully');
-    } else {
-      console.error('Error submitting user input');
-    }
-  } catch (error) {
-    console.error(error);
+      body: JSON.stringify({ text }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log('Entry saved:', data);
+        lastEntryTime = currentTime;
+      })
+      .catch((error) => {
+        console.error('Error saving entry:', error);
+      });
   }
 });
